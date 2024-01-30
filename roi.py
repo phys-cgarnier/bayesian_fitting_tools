@@ -50,7 +50,7 @@ class CircularROI(ROI):
         return patches.Circle(
             tuple(self.center), self.radius, facecolor="none", edgecolor="r")
 
-class RectangularROI(BaseModel):
+class RectangularROI(ROI):
     """
     Define a rectangular region of interest (ROI) for an image, cropping pixels outside
     the ROI.
