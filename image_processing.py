@@ -15,14 +15,14 @@ class ImageProcessor(BaseModel):
     visualize: bool = True
 
     # needs docstrings
-    def subtract_background(self,raw_image):
+    def subtract_background(self,raw_image:np.ndarray)->np.ndarray:
         if self.background_file is not None:
             image = raw_image - self.background_image
         else:
             image = np.clip(raw_image-self.threshold,0,1e7)
         return image
        
-    def process(self,raw_image):
+    def process(self,raw_image:np.ndarray)->np.ndarray:
         processed_image = self.subtract_background(raw_image)
         if self.roi_obj is not None:
             processed_image =self.roi_obj.crop_image(processed_image)
