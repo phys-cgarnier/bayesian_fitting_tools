@@ -14,6 +14,7 @@ class ImageProcessor(BaseModel):
     subtract_background_flag: bool = True
     visualize: bool = True
 
+    # needs docstrings
     def subtract_background(self,raw_image):
         if self.background_file is not None:
             image = raw_image - self.background_image
