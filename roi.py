@@ -29,19 +29,22 @@ class CircularROI(ROI):
     radius: PositiveFloat
     @property
     def bounding_box(self):
-        return [self.center[0] - int(self.radius),
-                self.center[1] - int(self.radius),
-                self.radius * 2, self.radius * 2]
+        return [int(self.center[0] - int(self.radius)),
+                int(self.center[1] - int(self.radius)),
+                int(self.radius * 2), int(self.radius * 2)]
 
     def crop_image(self, img, **kwargs) -> np.ndarray:
         x_size, y_size = img.shape
         fill_value = kwargs.get("fill_value", 0.0)
-        if self.xwidth > x_size or self.ywidth > y_size:
-            raise ValueError(
-                f"must specify ROI that is smaller than the image, "
-                f"image size is {img.shape}")
+        # if self.xwidth > x_size or self.ywidth > y_size:
+            # raise ValueError(
+                # f"must specify ROI that is smaller than the image, "
+                # f"image size is {img.shape}")
         bbox = self.bounding_box
-        img = img[..., bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
+        print(bbox)
+        print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
+        # img = img[ bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
+        img = img[ bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2]]
 
         # TODO: fill px values outside region with fill value
         return img
@@ -59,9 +62,9 @@ class RectangularROI(ROI):
     ywidth: int
     @property
     def bounding_box(self):
-        return [self.center[0] - int(self.xwidth / 2),
-                self.center[1] - int(self.ywidth / 2),
-                self.xwidth, self.ywidth]
+        return [int(self.center[0] - int(self.xwidth / 2)),
+                int(self.center[1] - int(self.ywidth / 2)),
+                int(self.xwidth), int(self.ywidth)]
 
     def crop_image(self, img, **kwargs) -> np.ndarray:
         x_size, y_size = img.shape
@@ -70,10 +73,14 @@ class RectangularROI(ROI):
                 f"must specify ROI that is smaller than the image, "
                 f"image size is {img.shape}")
         bbox = self.bounding_box
-        img = img[bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
+        print(bbox)
+        print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
+        # this was returning what was needed for y as x and x as y
+        # img = img[bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
+        img = img[ bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2]]
 
         return img
 
     def get_patch(self):
         return patches.Rectangle(
-            *self.bounding_box, facecolor="none", edgecolor="r")
+        (self.bounding_box[0],self.bounding_box[1]),self.bounding_box[2],self.bounding_box[3], facecolor="none", edgecolor="r")

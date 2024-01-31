@@ -6,10 +6,9 @@ from pydantic import BaseModel,PositiveFloat
 from roi import CircularROI, RectangularROI, ROI
 import os
 
-roi_var = TypeVar('roi_var', bound='ROI')
 
 class ImageProcessor(BaseModel):
-    roi_type: Type[roi_var]
+    roi_obj: ROI 
     background_file: str = None
     threshold: PositiveFloat = 0.0
     subtract_background_flag: bool = True
@@ -24,14 +23,17 @@ class ImageProcessor(BaseModel):
        
     def process(self,raw_image):
         processed_image = self.subtract_background(raw_image)
-        # processed_image = roi.crop_image(processed_image)
+        if self.roi_obj is not None:
+            processed_image =self.roi_obj.crop_image(processed_image)
         if self.visualize:
             fig, ax = plt.subplots()
-            c = ax.imshow(processed_image, origin="lower")
+            c = ax.imshow(raw_image>0, origin="lower")
+            rect = self.roi_obj.get_patch()
+            ax.add_patch(rect)
             fig.colorbar(c)
         return processed_image
     
-    # this method is useless without reading from an h5pyfile
+    # needs read h5 file or update property to not load from file
     @property
     def background_image(self) -> Union[np.ndarray, float]:
         if self.background_file is not None:
