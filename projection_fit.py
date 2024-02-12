@@ -4,6 +4,7 @@ from matplotlib import patches, pyplot as plt
 from typing import Union,List,Type,TypeVar
 from pydantic import BaseModel, PositiveFloat, ConfigDict
 from gaussian_model import GaussianModel
+from method_base import MethodBase
 import scipy.optimize
 
 # work in progress
@@ -13,14 +14,10 @@ class ProjectionFit(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     # should add getter/setter methods otherwise there is no reason to call model_setup externally
     distribution_data : np.ndarray # List[Float] ? 
-    model : GaussianModel 
+    model : MethodBase 
     visualize: bool = True
     use_priors: bool = True
 
-    def get_projections(self):
-        # should have projection being passed
-        # no need for this
-        pass
 
     def normalize(self,old_data:np.ndarray)->np.ndarray:
         # normalize 
