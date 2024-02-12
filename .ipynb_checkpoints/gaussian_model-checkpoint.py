@@ -9,9 +9,6 @@ from scipy.ndimage import gaussian_filter
 
 
 class Base(ABC):
-    # ProjectionBase
-    # setup property for init prior
-    self.init_prior = {}
     @staticmethod
     @abstractmethod
     def forward(x:np.array, params:np.array)->np.array:
@@ -34,13 +31,10 @@ class Base(ABC):
         return l
 
 
-
 class GaussianModel(Base):
     param_guesses: np.ndarray = np.array([.75, .5, .1,.2]) #amp, mean, sigma,offset
     param_bounds: np.ndarray = np.array([[0.01,1.],[.01,1.],[0.01,5.],[0.01,1.]]) 
-    param_names: list = ['ampl','mean',
-                        'sigma','offset']
-    
+
     def __init__(self,distribution_data:np.ndarray = None):
         if distribution_data is not None: 
             self.distribution_data =  distribution_data
@@ -65,8 +59,6 @@ class GaussianModel(Base):
 
     def find_priors(self,data):
         '''do initial guesses based on data and make distribution from that guess, very rough first pass'''
-        # clean this
-        # addedv priors to dict 
         offset = float(np.min(data))
         ampl = np.max(gaussian_filter(data,sigma=5)) -offset
         mean = np.argmax(gaussian_filter(data,sigma=5))/(len(data))
@@ -107,7 +99,7 @@ class GaussianModel(Base):
     
     def plot_priors(self):
         fig, axs = plt.subplots(5,1,figsize = (10,10))
-        # takes in arbitrary set of priors, iterate through dictionary
+        
         ax = axs[0]
         x = np.linspace(0,1,len(self.distribution_data))
         ax.plot(x, self.ampl_prior.pdf(x))

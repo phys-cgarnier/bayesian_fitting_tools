@@ -12,7 +12,7 @@ import scipy.optimize
 class ProjectionFit(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     # should add getter/setter methods otherwise there is no reason to call model_setup externally
-    distribution_data : np.ndarray
+    distribution_data : np.ndarray # List[Float] ? 
     model : GaussianModel 
     visualize: bool = True
     use_priors: bool = True
@@ -34,6 +34,9 @@ class ProjectionFit(BaseModel):
         old_data = xfmd_data*dmax
         return old_data
     
+    def fit_projection(self,projection_data:np.ndarray)->dict[str,float]:
+        pass
+    
     def model_setup(self)->None:
         normalized_data = self.normalize(self.distribution_data)
         self.model.distribution_data = normalized_data
@@ -43,11 +46,12 @@ class ProjectionFit(BaseModel):
     def fit_model(self)->scipy.optimize._optimize.OptimizeResult:
         x = np.linspace(0,1,len(self.model.distribution_data))
         y = self.model.distribution_data
+        
         res =  scipy.optimize.minimize(self.model.loss, self.model.param_guesses,
                                     args=(x, y, self.use_priors),
                                     bounds=self.model.param_bounds)
 
-        # need to make this function model dependent
+        # need to make this function model dependent (i.e gaussian_model, double_gaussian_model, etc)
         if self.visualize:
             fig, ax = plt.subplots(figsize = (10,5))
             y_fit = self.model.forward(x,res.x)
