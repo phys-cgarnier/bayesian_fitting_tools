@@ -12,31 +12,32 @@ import scipy.optimize
 
 class ProjectionFit(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    # should add getter/setter methods otherwise there is no reason to call model_setup externally
-    distribution_data : np.ndarray # List[Float] ? 
     model : MethodBase 
     visualize: bool = True
     use_priors: bool = True
 
 
     def normalize(self,old_data:np.ndarray)->np.ndarray:
-        # normalize 
         data = old_data.copy()
-        dmax = np.max(data)
-        assert len(data.shape) == 1
-        normalized_data = data/dmax
+        normalized_data = data/(np.max(data))
         return normalized_data
 
-    def unnormalize(self,xfmd_data:np.ndarray,dmax:float)->np.ndarray:
-        old_data = xfmd_data*dmax
-        return old_data
+    def unnormalize_model_params(self,params_dict: dict[str,float],projection_data:np.ndarray)->np.ndarray:
+        max_value = np.max(projection_data)
+        length = len(projection_data)
+
+        for key, val in params_dict.items():
+            if 'sigma' in key or 'mean' in key:
+                true_fitted_val = val*length
+            else: 
+                true_fitted_val = val * max_value
+            temp = {key:true_fitted_val}
+            params_dict.update(temp)
+        return params_dict 
     
-    def fit_projection(self,projection_data:np.ndarray)->dict[str,float]:
-        pass
-    
-    def model_setup(self)->None:
-        normalized_data = self.normalize(self.distribution_data)
-        self.model.distribution_data = normalized_data
+    def model_setup(self,projection_data=np.ndarray)->None:
+        # hmm.... maybe this should not be callable externally the model needs normalized data only
+        self.model.distribution_data = projection_data
         if self.visualize:
             self.model.plot_priors()
 
@@ -47,8 +48,7 @@ class ProjectionFit(BaseModel):
         res =  scipy.optimize.minimize(self.model.loss, self.model.param_guesses,
                                     args=(x, y, self.use_priors),
                                     bounds=self.model.param_bounds)
-
-        # need to make this function model dependent (i.e gaussian_model, double_gaussian_model, etc)
+        
         if self.visualize:
             fig, ax = plt.subplots(figsize = (10,5))
             y_fit = self.model.forward(x,res.x)
@@ -56,17 +56,22 @@ class ProjectionFit(BaseModel):
             ax.plot(x, y_fit, label='fit')
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.legend()
-            
-            textstr = '\n'.join((
-                r'$\mathrm{A}=%.2f$' % (res.x[0], ),
-                r'$\mu=%.2f$' % (res.x[1], ),
-                r'$\sigma=%.2f$' % (res.x[2], ),r'$\mathrm{offset}=%.2f$' % (res.x[3], )))
-
-            # these are matplotlib.patch.Patch properties
+            ax.legend(loc= 'upper right')
+            assert len(self.model.param_names) == len(res.x)
+            textstr = '\n'.join([r'$\mathrm{%s}=%.2f$'%(self.model.param_names[i],res.x[i]) for i in range(len(res.x))])
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-
-            # place a text box in upper left in axes coords
             ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
                     verticalalignment='top', bbox=props)
         return res
+    
+    def fit_projection(self,projection_data:np.ndarray)->dict[str,float]:
+        assert len(projection_data.shape) == 1
+        fitted_params_dict = {}
+        normalized_data =  self.normalize(projection_data)
+        self.model_setup(projection_data=normalized_data)
+        res = self.fit_model()
+        for i, param in enumerate(self.model.param_names):
+            fitted_params_dict[param] = (res.x)[i]
+        print(fitted_params_dict)
+        params_dict = self.unnormalize_model_params(fitted_params_dict,projection_data)
+        return params_dict

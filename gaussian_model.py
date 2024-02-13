@@ -6,10 +6,9 @@ from method_base import MethodBase
 
 
 class GaussianModel(MethodBase):
+    param_names: list = ['ampl','mean','sigma','offset']
     param_guesses: np.ndarray = np.array([.75, .5, .1,.2]) #amp, mean, sigma,offset
     param_bounds: np.ndarray = np.array([[0.01,1.],[.01,1.],[0.01,5.],[0.01,1.]]) 
-    param_names: list = ['ampl','mean',
-                        'sigma','offset']
     
     def __init__(self,distribution_data:np.ndarray = None):
         if distribution_data is not None: 
@@ -18,7 +17,7 @@ class GaussianModel(MethodBase):
         
     @property
     def distribution_data(self):
-        """Image, typically numpy array or 2darray"""
+        """1d array typically projection data"""
         print('getting distribution')
         return self._distribution_data
 
@@ -28,17 +27,15 @@ class GaussianModel(MethodBase):
         if not isinstance(distribution_data, np.ndarray):
             raise TypeError("Input must be ndarray")
         self._distribution_data = distribution_data
-        self.find_priors(distribution_data)
+        self.find_priors(self._distribution_data)
 
 
     def find_priors(self,data):
-        '''do initial guesses based on data and make distribution from that guess, very rough first pass'''
-        # clean this
-        # addedv priors to dict 
+        '''do initial guesses based on data and make distribution from that guess'''
         offset = float(np.min(data))
         self.offset_prior = norm(offset, .5)
         
-        ampl = np.max(gaussian_filter(data,sigma=5)) -offset
+        ampl = np.max(gaussian_filter(data,sigma=5)) - offset
         ampl_mean = ampl
         ampl_var = 0.05
         ampl_alpha = (ampl_mean**2)/ampl_var
@@ -53,14 +50,15 @@ class GaussianModel(MethodBase):
         sigma_beta = 5.0
         self.sigma_prior = gamma(sigma_alpha,loc=0,scale = 1/sigma_beta)
     
-        self.init_priors = {self.param_names[0]:ampl,self.param_names[1]:mean,self.param_names[2]:sigma,self.param_names[3]:offset}
-        print(self.init_priors)
 
-        #### change type hints in base class after returning array
+        ##discuss this 
+        self.init_priors = {self.param_names[0]:ampl,self.param_names[1]:mean,self.param_names[2]:sigma,self.param_names[3]:offset}
+        self.priors= {self.param_names[0]:self.ampl_prior,self.param_names[1]:self.mean_prior,self.param_names[2]:self.sigma_prior,self.param_names[3]:self.offset_prior}
+        self.init_values = [ampl,mean,sigma,offset]
+        print(self.init_priors)
     
     @staticmethod
     def forward(x, params):
-        # unpack params
         amplitude = params[0]
         mean = params[1]
         sigma = params[2]
@@ -68,10 +66,28 @@ class GaussianModel(MethodBase):
         return amplitude * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2)) + offset
     
     def log_prior(self, params):
+        # can change too :
+        # return self.priors['ampl'].logpdf(params[0]) + self.priors['mean'].logpdf(params[1]) + self.priors['sigma'].logpdf(params[2]) + self.priors['offset'].logpdf(params[3])
         return self.ampl_prior.logpdf(params[0]) + self.mean_prior.logpdf(params[1]) + self.sigma_prior.logpdf(params[2]) + self.offset_prior.logpdf(params[3])
     
     def plot_priors(self):
-        pass
+        num_plots = len(self.priors) + 1
+        fig, axs = plt.subplots(num_plots,1,figsize = (10,10))
+        for i, (param, prior) in enumerate(self.priors.items()):
+            x = np.linspace(0,self.param_bounds[i][-1],len(self.distribution_data))
+            axs[i].plot(x,prior.pdf(x)) 
+            axs[i].axvline(self.param_bounds[i,0], ls='--', c='k',)
+            axs[i].axvline(self.param_bounds[i,1], ls='--', c='k', label='bounds')
+            axs[i].set_title(param + ' prior')
+            axs[i].set_ylabel('Density')
+            axs[i].set_xlabel(param)
 
-    
+        x = np.linspace(0,1,len(self.distribution_data))
+        y_fit = self.forward(x,self.init_values)
+        axs[-1].plot(x,self.distribution_data, label = 'Projection Data')
+        axs[-1].plot(x,y_fit, label = 'Initial Guess Fit Data')
+        axs[-1].set_xlabel('x')
+        axs[-1].set_ylabel('Forward(x)')
+        axs[-1].set_title('Initial Fit Guess')
 
+        fig.tight_layout()
