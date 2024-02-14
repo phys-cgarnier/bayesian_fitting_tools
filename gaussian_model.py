@@ -29,9 +29,12 @@ class GaussianModel(MethodBase):
         self._distribution_data = distribution_data
         self.find_priors(self._distribution_data)
 
-
-    def find_priors(self,data):
+    #def find_init_values()
+        #self.init_values = []
+        #return self.init_values
+    def find_priors(self,data:np.array)->None: # maybe want dictionary or list returned then make that that return value and store it as an instance attribute
         '''do initial guesses based on data and make distribution from that guess'''
+        #init_values = self.find_init_guess()
         offset = float(np.min(data))
         self.offset_prior = norm(offset, .5)
         
@@ -52,25 +55,33 @@ class GaussianModel(MethodBase):
     
 
         ##discuss this 
+   
+        # init guesses maybe a better name dictionary form
         self.init_priors = {self.param_names[0]:ampl,self.param_names[1]:mean,self.param_names[2]:sigma,self.param_names[3]:offset}
+        # could maybe pass fit_model and change forward function and log prior to accept dictionaries not lists
+
+        #dictionary with param names and the prior distribution function as its value maybe can drop the self on self.{xx}_prior
         self.priors= {self.param_names[0]:self.ampl_prior,self.param_names[1]:self.mean_prior,self.param_names[2]:self.sigma_prior,self.param_names[3]:self.offset_prior}
+        
+        #list form for init guesses need this for forward, log_priors, and and projection fit fit model
         self.init_values = [ampl,mean,sigma,offset]
+        
         print(self.init_priors)
     
     @staticmethod
-    def forward(x, params):
+    def forward(x:float, params:list)->float:
         amplitude = params[0]
         mean = params[1]
         sigma = params[2]
         offset = params[3]
         return amplitude * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2)) + offset
     
-    def log_prior(self, params):
+    def log_prior(self, params:list)->float:
         # can change too :
         # return self.priors['ampl'].logpdf(params[0]) + self.priors['mean'].logpdf(params[1]) + self.priors['sigma'].logpdf(params[2]) + self.priors['offset'].logpdf(params[3])
         return self.ampl_prior.logpdf(params[0]) + self.mean_prior.logpdf(params[1]) + self.sigma_prior.logpdf(params[2]) + self.offset_prior.logpdf(params[3])
     
-    def plot_priors(self):
+    def plot_priors(self)-> None:
         num_plots = len(self.priors) + 1
         fig, axs = plt.subplots(num_plots,1,figsize = (10,10))
         for i, (param, prior) in enumerate(self.priors.items()):

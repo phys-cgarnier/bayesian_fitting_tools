@@ -34,20 +34,26 @@ class CircularROI(ROI):
                 int(self.radius * 2), int(self.radius * 2)]
 
     def crop_image(self, img, **kwargs) -> np.ndarray:
-        x_size, y_size = img.shape
         fill_value = kwargs.get("fill_value", 0.0)
-        # if self.xwidth > x_size or self.ywidth > y_size:
-            # raise ValueError(
-                # f"must specify ROI that is smaller than the image, "
-                # f"image size is {img.shape}")
+        img = self.fill_value_outside_circle(img,self.center,self.radius,fill_value)
         bbox = self.bounding_box
-        print(bbox)
-        print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
+        # print(bbox)
+        # print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
         # img = img[ bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
         img = img[ bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2]]
 
         # TODO: fill px values outside region with fill value
         return img
+
+    def fill_value_outside_circle(self,img:np.ndarray,center:List[PositiveFloat],radius:PositiveFloat,fill_value:float):
+        height,width= img.shape
+        for y in range(height):
+            for x in range(width):
+                distance =  np.sqrt((x - center[0])**2 + (y - center[1])**2)
+                if distance > radius:
+                    img[y, x] = fill_value
+        return img
+    
 
     def get_patch(self):
         return patches.Circle(

@@ -24,6 +24,7 @@ class MethodBase(ABC):
         return l
 
     @property
+    # priors not init priors and move more stuff into base
     def init_priors(self):
         """Initial Priors store in a dictionary where the keys are the complete set of parameters of the Model"""
         return self._init_priors 
