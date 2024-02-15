@@ -17,12 +17,10 @@ class ImageProcessor(BaseModel):
 
     # needs docstrings
     def subtract_background(self,raw_image:np.ndarray)->np.ndarray:
-        #if self.background_image is not None:
-            #print(self.background_image)
-            #image = raw_image - np.load(self.background_image)
-            #pass
-        #else:
-        image = np.clip(raw_image-self.threshold,0,1e7)
+        if self.background_image is not None:
+            image = raw_image - self.background_image
+        else:
+            image = np.clip(raw_image-self.threshold,0,1e7)
         return image
        
     def process(self,raw_image:np.ndarray)->np.ndarray:
@@ -38,10 +36,3 @@ class ImageProcessor(BaseModel):
         return processed_image
     
     # needs read h5 file or update property to not load from file
-    @property
-    def background_image(self) -> Union[np.ndarray, float]:
-        return self._background_image
-
-    @background_image.setter
-    def background_image(self,background_image):
-        self._background_image = background_image

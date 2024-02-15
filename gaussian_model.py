@@ -15,59 +15,41 @@ class GaussianModel(MethodBase):
             self.distribution_data =  distribution_data
             self.find_priors(self.distribution_data)
         
-    @property
-    def distribution_data(self):
-        """1d array typically projection data"""
-        print('getting distribution')
-        return self._distribution_data
-
-    @distribution_data.setter
-    def distribution_data(self,distribution_data):
-        print('setting distribution')
-        if not isinstance(distribution_data, np.ndarray):
-            raise TypeError("Input must be ndarray")
-        self._distribution_data = distribution_data
-        self.find_priors(self._distribution_data)
-
-    #def find_init_values()
-        #self.init_values = []
-        #return self.init_values
-    def find_priors(self,data:np.array)->None: # maybe want dictionary or list returned then make that that return value and store it as an instance attribute
-        '''do initial guesses based on data and make distribution from that guess'''
-        #init_values = self.find_init_guess()
+    def find_init_values(self,data:np.array)->list:
         offset = float(np.min(data))
-        self.offset_prior = norm(offset, .5)
-        
-        ampl = np.max(gaussian_filter(data,sigma=5)) - offset
-        ampl_mean = ampl
-        ampl_var = 0.05
-        ampl_alpha = (ampl_mean**2)/ampl_var
-        ampl_beta = ampl_mean/ampl_var
-        self.ampl_prior = gamma(ampl_alpha, loc = 0, scale = 1/ampl_beta)
-        
+        amplitude = np.max(gaussian_filter(data,sigma=5)) - offset
         mean = np.argmax(gaussian_filter(data,sigma=5))/(len(data))
-        self.mean_prior = norm(mean,0.1)
-
         sigma = .1
+        self.init_values = [amplitude,mean,sigma,offset]
+        return self.init_values
+            
+    def find_priors(self,data:np.array)->None:
+        '''do initial guesses based on data and make distribution from that guess'''
+
+        init_values = self.find_init_values(data)
+        
+        amplitude_mean = init_values[0]
+        amplitude_var = 0.05
+        amplitude_alpha = (amplitude_mean**2)/amplitude_var
+        amplitude_beta = amplitude_mean/amplitude_var
+        amplitude_prior = gamma(amplitude_alpha, loc = 0, scale = 1/amplitude_beta)
+    
+        mean_prior = norm(init_values[1],0.1)
+
         sigma_alpha = 2.5
         sigma_beta = 5.0
-        self.sigma_prior = gamma(sigma_alpha,loc=0,scale = 1/sigma_beta)
+        sigma_prior = gamma(sigma_alpha,loc=0,scale = 1/sigma_beta)
     
+        offset_prior = norm(init_values[3], .5)
 
-        ##discuss this 
-   
-        # init guesses maybe a better name dictionary form
-        self.init_priors = {self.param_names[0]:ampl,self.param_names[1]:mean,self.param_names[2]:sigma,self.param_names[3]:offset}
-        # could maybe pass fit_model and change forward function and log prior to accept dictionaries not lists
-
-        #dictionary with param names and the prior distribution function as its value maybe can drop the self on self.{xx}_prior
-        self.priors= {self.param_names[0]:self.ampl_prior,self.param_names[1]:self.mean_prior,self.param_names[2]:self.sigma_prior,self.param_names[3]:self.offset_prior}
+        self.priors= {self.param_names[0]: amplitude_prior, 
+                      self.param_names[1]: mean_prior, 
+                      self.param_names[2]: sigma_prior, 
+                      self.param_names[3]: offset_prior
+                      }
         
-        #list form for init guesses need this for forward, log_priors, and and projection fit fit model
-        self.init_values = [ampl,mean,sigma,offset]
+        return self.priors
         
-        print(self.init_priors)
-    
     @staticmethod
     def forward(x:float, params:list)->float:
         amplitude = params[0]
@@ -77,12 +59,10 @@ class GaussianModel(MethodBase):
         return amplitude * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2)) + offset
     
     def log_prior(self, params:list)->float:
-        # can change too :
-        # return self.priors['ampl'].logpdf(params[0]) + self.priors['mean'].logpdf(params[1]) + self.priors['sigma'].logpdf(params[2]) + self.priors['offset'].logpdf(params[3])
-        return self.ampl_prior.logpdf(params[0]) + self.mean_prior.logpdf(params[1]) + self.sigma_prior.logpdf(params[2]) + self.offset_prior.logpdf(params[3])
+        return np.sum([prior.logpdf[params[i]] for i, (key, prior) in enumerate(self.priors.items())])
     
     def plot_priors(self)-> None:
-        num_plots = len(self.priors) + 1
+        num_plots = len(self.priors)
         fig, axs = plt.subplots(num_plots,1,figsize = (10,10))
         for i, (param, prior) in enumerate(self.priors.items()):
             x = np.linspace(0,self.param_bounds[i][-1],len(self.distribution_data))
@@ -92,13 +72,16 @@ class GaussianModel(MethodBase):
             axs[i].set_title(param + ' prior')
             axs[i].set_ylabel('Density')
             axs[i].set_xlabel(param)
-
+        fig.tight_layout()
+        return fig,axs
+    
+    def plot_init_values(self):
+        fig, axs = plt.subplots(1,1,figsize = (10,5))
         x = np.linspace(0,1,len(self.distribution_data))
         y_fit = self.forward(x,self.init_values)
-        axs[-1].plot(x,self.distribution_data, label = 'Projection Data')
-        axs[-1].plot(x,y_fit, label = 'Initial Guess Fit Data')
-        axs[-1].set_xlabel('x')
-        axs[-1].set_ylabel('Forward(x)')
-        axs[-1].set_title('Initial Fit Guess')
-
-        fig.tight_layout()
+        axs.plot(x,self.distribution_data, label = 'Projection Data')
+        axs.plot(x,y_fit, label = 'Initial Guess Fit Data')
+        axs.set_xlabel('x')
+        axs.set_ylabel('Forward(x)')
+        axs.set_title('Initial Fit Guess')
+        return fig,axs

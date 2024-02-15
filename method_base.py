@@ -2,12 +2,28 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 class MethodBase(ABC):
+    def __init__(self):
+        init_values: list = None
+        
+    @abstractmethod
+    def find_init_values(self):
+        pass
+
+    @abstractmethod
+    def find_priors(self):
+        pass
+
+    @abstractmethod
+    def plot_init_values(self):
+        pass
+
+    @abstractmethod
+    def plot_priors(self):
+        pass
+
     @staticmethod
     @abstractmethod
     def forward(x:np.array, params:np.array)->np.array:
-        pass
-    @abstractmethod
-    def find_priors(self,data:np.array)->None:
         pass
     
     def log_likelihood(self, x, y, params):
@@ -22,15 +38,28 @@ class MethodBase(ABC):
         if use_priors:
             l = l - self.log_prior(params)
         return l
+    
 
     @property
     # priors not init priors and move more stuff into base
-    def init_priors(self):
+    def priors(self):
         """Initial Priors store in a dictionary where the keys are the complete set of parameters of the Model"""
-        return self._init_priors 
+        return self._priors 
     
-    @init_priors.setter
-    def init_priors(self,init_priors):
-        if not isinstance(init_priors,dict):
+    @priors.setter
+    def priors(self,priors):
+        if not isinstance(priors,dict):
             raise TypeError("Input must be a dictionary")
-        self._init_priors = init_priors   
+        self._priors = priors   
+
+    @property
+    def distribution_data(self):
+        """1d array typically projection data"""
+        return self._distribution_data
+
+    @distribution_data.setter
+    def distribution_data(self,distribution_data):
+        if not isinstance(distribution_data, np.ndarray):
+            raise TypeError("Input must be ndarray")
+        self._distribution_data = distribution_data
+        self.find_priors(self._distribution_data)
