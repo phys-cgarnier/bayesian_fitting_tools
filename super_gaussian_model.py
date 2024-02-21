@@ -5,16 +5,16 @@ from scipy.ndimage import gaussian_filter
 from method_base import MethodBase
 
 
-class GaussianModel(MethodBase):
+class SuperGaussianModel(MethodBase):
     '''
-    GaussianModel Class that finds initial param values for gaussian distribution
-    and builds probability density functions for the likelyhood a param to be that value based on those initial param values
-    - passing this class the variable distribution_data automatically updates the initial values and and probability density functions
-     to match that data
+        SuperGaussianModel Class that finds initial param values for gaussian distribution
+        and builds probability density functions for the likelyhood a param to be that value based on those initial param values
+        - passing this class the variable distribution_data automatically updates the initial values and and probability density functions
+        to match that data
     '''
-    param_names: list = ['amplitude','mean','sigma','offset']
-    param_guesses: np.ndarray = np.array([.75, .5, .1,.2]) #amp, mean, sigma,offset
-    param_bounds: np.ndarray = np.array([[0.01,1.],[.01,1.],[0.01,5.],[0.01,1.]]) 
+    param_names: list = ['amplitude','mean','sigma','power','offset']
+    param_guesses: np.ndarray = np.array([.75, .5, .1, 2, .2]) #amp, mean, sigma, power, offset
+    param_bounds: np.ndarray = np.array([[0.01,1.], [.01,1.], [0.01,5.], [.5,5], [0.01,1.]]) 
     
     def __init__(self,distribution_data:np.ndarray = None):
         if distribution_data is not None: 
@@ -26,7 +26,8 @@ class GaussianModel(MethodBase):
         amplitude = np.max(gaussian_filter(data,sigma=5)) - offset
         mean = np.argmax(gaussian_filter(data,sigma=5))/(len(data))
         sigma = .1
-        self.init_values = [amplitude,mean,sigma,offset]
+        power = 2
+        self.init_values = [amplitude,mean,sigma,power,offset]
         return self.init_values
             
     def find_priors(self,data:np.array)->None:
@@ -46,11 +47,14 @@ class GaussianModel(MethodBase):
         sigma_beta = 5.0
         sigma_prior = gamma(sigma_alpha,loc=0,scale = 1/sigma_beta)
     
-        offset_prior = norm(init_values[3], .5)
+        power_prior = norm(init_values[3],0.2) # changing 
+        offset_prior = norm(init_values[4], .5)
+
         self.priors= {self.param_names[0]: amplitude_prior, 
                       self.param_names[1]: mean_prior, 
                       self.param_names[2]: sigma_prior, 
-                      self.param_names[3]: offset_prior
+                      self.param_names[3]: power_prior,
+                      self.param_names[4]: offset_prior
                       }
         return self.priors
 
@@ -59,8 +63,10 @@ class GaussianModel(MethodBase):
         amplitude = params[0]
         mean = params[1]
         sigma = params[2]
-        offset = params[3]
-        return amplitude * np.exp(-(x - mean) ** 2 / (2 * sigma ** 2)) + offset
+        power = params[3]
+        offset = params[4]
+        amplitude * np.exp((-abs(x - mean) ** (power)) / (2 * sigma ** (power))) + offset
+        return amplitude * np.exp((-abs(x - mean) ** (power)) / (2 * sigma ** (power))) + offset
     
     def log_prior(self, params:list)->float:
         return np.sum([prior.logpdf[params[i]] for i, (key, prior) in enumerate(self.priors.items())])

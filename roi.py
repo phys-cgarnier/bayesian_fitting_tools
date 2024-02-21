@@ -37,12 +37,7 @@ class CircularROI(ROI):
         fill_value = kwargs.get("fill_value", 0.0)
         img = self.fill_value_outside_circle(img,self.center,self.radius,fill_value)
         bbox = self.bounding_box
-        # print(bbox)
-        # print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
-        # img = img[ bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
         img = img[ bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2]]
-
-        # TODO: fill px values outside region with fill value
         return img
 
     def fill_value_outside_circle(self,img:np.ndarray,center:List[PositiveFloat],radius:PositiveFloat,fill_value:float):
@@ -79,12 +74,7 @@ class RectangularROI(ROI):
                 f"must specify ROI that is smaller than the image, "
                 f"image size is {img.shape}")
         bbox = self.bounding_box
-        print(bbox)
-        print(bbox[0],' -> ', bbox[0]+bbox[2], ' , ', bbox[1], ' -> ', bbox[1] + bbox[3])
-        # this was returning what was needed for y as x and x as y
-        # img = img[bbox[0]: bbox[0] + bbox[2], bbox[1]: bbox[1] + bbox[3]]
         img = img[ bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2]]
-
         return img
 
     def get_patch(self):

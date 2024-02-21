@@ -1,25 +1,57 @@
 from abc import ABC, abstractmethod
 import numpy as np
+from matplotlib import pyplot as plt
 
 class MethodBase(ABC):
+    ''' 
+        Base abstract class for all methods, which serves as the bare minimum skeleton code needed. Should be used only as a parent class
+        to all method models.
+        ---------------------------
+        Arguments:
+        param_names: list (list all of param names that the model will contain)
+        param_guesses: np.ndarray (array that contains a guess as to what each param value is organized in the same order as param_names)
+        param_bounds: np.ndarray (array that contains the lower and upper bound on for acceptable values of each parameter)
+    '''
     def __init__(self):
-        init_values: list = None
+        self.param_names: list = None
+        self.param_guesses: np.ndarray = None
+        self.param_bounds: np.ndarray = None
+        self.init_values: list = None
         
     @abstractmethod
-    def find_init_values(self):
+    def find_init_values(self,data:np.ndarray)->list:
         pass
 
     @abstractmethod
-    def find_priors(self):
+    def find_priors(self,data:np.ndarray)->dict:
         pass
 
-    @abstractmethod
     def plot_init_values(self):
-        pass
+        '''Plots init values as a function of forward and visually compares it to the initial distribution'''
+        fig, axs = plt.subplots(1,1,figsize = (10,5))
+        x = np.linspace(0,1,len(self.distribution_data))
+        y_fit = self.forward(x,self.init_values)
+        axs.plot(x,self.distribution_data, label = 'Projection Data')
+        axs.plot(x,y_fit, label = 'Initial Guess Fit Data')
+        axs.set_xlabel('x')
+        axs.set_ylabel('Forward(x)')
+        axs.set_title('Initial Fit Guess')
+        return fig,axs
 
-    @abstractmethod
     def plot_priors(self):
-        pass
+        '''Plots prior distributions for each param in param_names'''
+        num_plots = len(self.priors)
+        fig, axs = plt.subplots(num_plots,1,figsize = (10,10))
+        for i, (param, prior) in enumerate(self.priors.items()):
+            x = np.linspace(0,self.param_bounds[i][-1],len(self.distribution_data))
+            axs[i].plot(x,prior.pdf(x)) 
+            axs[i].axvline(self.param_bounds[i,0], ls='--', c='k',)
+            axs[i].axvline(self.param_bounds[i,1], ls='--', c='k', label='bounds')
+            axs[i].set_title(param + ' prior')
+            axs[i].set_ylabel('Density')
+            axs[i].set_xlabel(param)
+        fig.tight_layout()
+        return fig,axs
 
     @staticmethod
     @abstractmethod
@@ -39,9 +71,7 @@ class MethodBase(ABC):
             l = l - self.log_prior(params)
         return l
     
-
     @property
-    # priors not init priors and move more stuff into base
     def priors(self):
         """Initial Priors store in a dictionary where the keys are the complete set of parameters of the Model"""
         return self._priors 

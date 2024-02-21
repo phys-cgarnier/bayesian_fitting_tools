@@ -2,23 +2,35 @@ import numpy as np
 from matplotlib import patches, pyplot as plt 
 from typing import Union,List,Type,TypeVar
 from pydantic import BaseModel, PositiveFloat, ConfigDict
-from gaussian_model import GaussianModel
 from method_base import MethodBase
 import scipy.optimize
 
 class ProjectionFit(BaseModel):
+    '''
+        1d fitting class that allows users to choose the model with which the fit is performed,
+        and if prior assumptions (bayesian regression) about the data should be used when performing the fit. Additionally there is an option to visualize the fitted data and priors.
+        -To perform a 1d fit, call fit_projection(projection_data={*data_to_fit*})
+        ------------------------
+        Arguments:
+        model: MethodBase (this argument is a child class object of method base e.g GaussianModel & DoubleGaussianModel)
+        visualize_priors: bool (shows plots of the priors and init guess distribution before fit)
+        use_priors: bool (incorporates prior distribution information into fit)
+        visualize_fit: bool (visualize the parameters as a function of the forward function from our model compared to distribution data)
+    '''
     model_config = ConfigDict(arbitrary_types_allowed=True)
     model : MethodBase 
-    visualize: bool = False
+    visualize_priors: bool = False
     use_priors: bool = False
     visualize_fit: bool = True
 
     def normalize(self,old_data:np.ndarray)->np.ndarray:
+        '''normalize a 1d array by scaling and shifting data s.t. data is between 0 and 1'''
         data = old_data.copy()
         normalized_data = data/(np.max(data))
         return normalized_data
 
     def unnormalize_model_params(self,params_dict: dict[str,float],projection_data:np.ndarray)->np.ndarray:
+        '''takes fitted and normalized params and returns them to unnormalized values i.e the true fitted values of the distribution'''
         max_value = np.max(projection_data)
         length = len(projection_data)
         for key, val in params_dict.items():
@@ -31,12 +43,17 @@ class ProjectionFit(BaseModel):
         return params_dict 
     
     def model_setup(self,projection_data=np.ndarray)->None:
+        '''sets up the model and plots init_values/priors'''
         self.model.distribution_data = projection_data
-        if self.visualize:
+        if self.visualize_priors:
             self.model.plot_priors()
             self.model.plot_init_values()
 
     def fit_model(self)->scipy.optimize._optimize.OptimizeResult:
+        '''
+            Fits model params to distribution data and plots the fitted params as a function of the model.
+            Returns optimizeResult object
+        '''
         x = np.linspace(0,1,len(self.model.distribution_data))
         y = self.model.distribution_data
         res =  scipy.optimize.minimize(self.model.loss, self.model.param_guesses,
@@ -58,6 +75,10 @@ class ProjectionFit(BaseModel):
         return res
     
     def fit_projection(self,projection_data:np.ndarray)->dict[str,float]:
+        '''
+            Wrapper function that does all necessary steps to fit 1d array.
+            Returns a dictionary where the keys are the model params and their values are the params fitted to the data
+        '''
         assert len(projection_data.shape) == 1
         fitted_params_dict = {}
         normalized_data =  self.normalize(projection_data)
